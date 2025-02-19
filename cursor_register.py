@@ -93,7 +93,7 @@ class CursorRegistration:
         try:
             print(f"{Fore.CYAN}{EMOJI['START']} {self.translator.get('register.register_start')}...{Style.RESET_ALL}")
             
-            # 直接使用 new_signup.py 进行注册
+            # 直接使用 new_signup.py 进行注册，但不传递信号处理
             from new_signup import main as new_signup_main
             
             # 执行新的注册流程，传入 translator
@@ -104,7 +104,8 @@ class CursorRegistration:
                 last_name=self.last_name,
                 email_tab=self.email_tab,
                 controller=self.controller,
-                translator=self.translator
+                translator=self.translator,
+                handle_signals=False  # 添加这个参数来禁用信号处理
             )
             
             if result:
@@ -237,6 +238,42 @@ class CursorRegistration:
         """更新Cursor的认证信息的便捷函数"""
         auth_manager = CursorAuth(translator=self.translator)
         return auth_manager.update_auth(email, access_token, refresh_token)
+
+    def cleanup(self):
+        """清理所有资源"""
+        try:
+            # 清理注册标签页
+            if self.signup_tab:
+                try:
+                    self.signup_tab.quit()
+                except:
+                    pass
+                self.signup_tab = None
+                
+            # 清理邮箱标签页
+            if hasattr(self, 'temp_email'):
+                try:
+                    self.temp_email.close()
+                except:
+                    pass
+                    
+            # 清理 Chrome 进程
+            if os.name == 'nt':
+                os.system('taskkill /F /IM chrome.exe /T 2>nul')
+                os.system('taskkill /F /IM chromedriver.exe /T 2>nul')
+            else:
+                os.system('pkill -f chrome')
+                os.system('pkill -f chromedriver')
+                
+        except Exception as e:
+            if self.translator:
+                print(f"{Fore.RED}{EMOJI['ERROR']} {self.translator.get('register.cleanup_error', error=str(e))}{Style.RESET_ALL}")
+            else:
+                print(f"清理资源时出错: {e}")
+
+    def __del__(self):
+        """析构函数，确保资源被清理"""
+        self.cleanup()
 
 def main(translator=None):
     """Main function to be called from main.py"""

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor VIP Tools</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .btn {
+            @apply px-4 py-2 rounded-lg transition-all duration-200 ease-in-out shadow-md;
+        }
+        .btn-primary {
+            @apply bg-blue-500 text-white hover:bg-blue-600 hover:shadow-lg transform hover:-translate-y-0.5;
+        }
+        .btn-danger {
+            @apply bg-red-500 text-white hover:bg-red-600 hover:shadow-lg transform hover:-translate-y-0.5;
+        }
+        .btn-success {
+            @apply bg-green-500 text-white hover:bg-green-600 hover:shadow-lg transform hover:-translate-y-0.5;
+        }
+        .output-container {
+            @apply mt-6 p-4 bg-gray-900 text-white rounded-lg shadow-xl border border-gray-700;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+        .output-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .output-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .output-container::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        .output-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .translation-key {
+            display: grid;
+            grid-template-columns: minmax(250px, auto) 1fr;
+            gap: 20px;
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .translation-key:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .key-text {
+            color: #64B5F6;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        .translated-text {
+            color: #A5D6A7;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        .language-select {
+            @apply px-3 py-2 border rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="bg-white rounded-xl shadow-xl p-8">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Cursor VIP Tools</h1>
+                    <p class="text-gray-600">管理您的Cursor VIP工具和设置</p>
+                </div>
+                <select id="language-select" class="language-select">
+                    <!-- 语言选项将通过JavaScript动态添加 -->
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <button onclick="resetMachine()" class="btn btn-primary flex items-center justify-center">
+                    <span class="mr-2">🔄</span> 重置机器
+                </button>
+                <button onclick="register()" class="btn btn-success flex items-center justify-center">
+                    <span class="mr-2">✅</span> 注册
+                </button>
+                <button onclick="registerManual()" class="btn btn-success flex items-center justify-center">
+                    <span class="mr-2">✅</span> 手动注册
+                </button>
+                <button onclick="quitCursor()" class="btn btn-danger flex items-center justify-center">
+                    <span class="mr-2">❌</span> 退出Cursor
+                </button>
+            </div>
+
+            <div class="output-container">
+                <pre id="output" class="output-text"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTranslations = {};
+        let lastOutput = '';
+
+        // 显示信息处理器
+        const OutputHandler = {
+            // 决定是否显示key的文本
+            shouldShowKeyText(key, text) {
+                // 如果没有key，或者key是空字符串，不显示
+                if (!key || key.trim() === '') return false;
+                
+                // 如果文本是数字或者只包含特殊字符，不显示
+                const isOnlySpecialChars = /^[^a-zA-Z\u4e00-\u9fa5]+$/.test(text);
+                if (isOnlySpecialChars) return false;
+                
+                // 如果key以某些特定前缀开头，不显示
+                const excludedPrefixes = ['system.', 'debug.', 'log.'];
+                if (excludedPrefixes.some(prefix => key.startsWith(prefix))) return false;
+                
+                return true;
+            },
+
+            // 创建输出行元素
+            createOutputLine(line, key) {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'translation-key';
+                
+                const keySpan = document.createElement('span');
+                keySpan.className = 'key-text';
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'translated-text';
+                
+                if (key && this.shouldShowKeyText(key, line)) {
+                    keySpan.textContent = key;
+                    const translatedText = getTranslationByKey(key);
+                    textSpan.textContent = translatedText || line;
+                } else {
+                    keySpan.textContent = '';
+                    textSpan.textContent = line;
+                }
+                
+                lineDiv.appendChild(keySpan);
+                lineDiv.appendChild(textSpan);
+                return lineDiv;
+            },
+
+            // 更新输出内容
+            updateOutputContent(outputElement, lines, keys) {
+                outputElement.innerHTML = '';
+                
+                lines.forEach((line, index) => {
+                    if (line.trim()) {
+                        const lineElement = this.createOutputLine(line, keys[index]);
+                        outputElement.appendChild(lineElement);
+                    } else if (index < lines.length - 1) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.style.height = '0.5em';
+                        outputElement.appendChild(emptyDiv);
+                    }
+                });
+            }
+        };
+
+        // 初始化时加载语言选项
+        async function initLanguages() {
+            const languages = await pywebview.api.get_available_languages();
+            const select = document.getElementById('language-select');
+            
+            for (const [code, name] of Object.entries(languages)) {
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = name;
+                select.appendChild(option);
+            }
+
+            // 监听语言变化
+            select.addEventListener('change', async (e) => {
+                await pywebview.api.set_language(e.target.value);
+                await updateTranslations();
+                lastOutput = '';  // 重置lastOutput以强制更新
+                await updateOutput();  // 立即更新输出
+            });
+
+            // 初始加载翻译
+            await updateTranslations();
+            await updateOutput();
+        }
+
+        // 更新页面上的翻译
+        async function updateTranslations() {
+            try {
+                currentTranslations = await pywebview.api.get_translations();
+                console.log('Current translations:', currentTranslations);  // 调试用
+            } catch (error) {
+                console.error('Error updating translations:', error);
+            }
+        }
+
+        // 根据key获取翻译文本
+        function getTranslationByKey(key) {
+            try {
+                if (!key) return null;
+                console.log('Getting translation for key:', key);  // 调试用
+                const keys = key.split('.');
+                let value = currentTranslations;
+                
+                // 直接遍历对象查找完整的key路径
+                for (const k of keys) {
+                    if (!value || typeof value !== 'object') {
+                        console.log('No translation found for key:', key);  // 调试用
+                        return null;
+                    }
+                    value = value[k];
+                }
+                
+                console.log('Found translation:', value);  // 调试用
+                return value;
+            } catch (error) {
+                console.error('Error getting translation:', error);
+                return null;
+            }
+        }
+
+        // 功能函数
+        async function resetMachine() {
+            await pywebview.api.reset_machine();
+        }
+
+        async function register() {
+            await pywebview.api.register();
+        }
+
+        async function registerManual() {
+            await pywebview.api.register_manual();
+        }
+
+        async function quitCursor() {
+            await pywebview.api.quit_cursor();
+        }
+
+        // 更新输出的函数现在使用OutputHandler
+        async function updateOutput() {
+            try {
+                const result = await pywebview.api.get_print_output();
+                if (result && result.text && result.text !== lastOutput) {
+                    const outputElement = document.getElementById('output');
+                    const lines = result.text.split('\n');
+                    const keys = result.keys;
+                    
+                    OutputHandler.updateOutputContent(outputElement, lines, keys);
+                    
+                    lastOutput = result.text;
+                    outputElement.scrollTop = outputElement.scrollHeight;
+                }
+            } catch (error) {
+                console.error('Error updating output:', error);
+            }
+        }
+
+        // 每500毫秒更新一次输出
+        setInterval(updateOutput, 500);
+
+        // 初始化时设置默认语言
+        window.addEventListener('pywebviewready', () => {
+            initLanguages().then(() => {
+                // 设置默认选中的语言
+                const select = document.getElementById('language-select');
+                if (select) {
+                    select.value = 'zh_tw';  // 设置默认语言
+                    select.dispatchEvent(new Event('change'));  // 触发change事件
+                }
+            }).catch(error => console.error('Error initializing:', error));
+        });
+    </script>
+</body>
+</html> 

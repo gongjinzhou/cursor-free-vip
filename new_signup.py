@@ -485,13 +485,14 @@ def handle_sign_in(browser_tab, email, password, translator=None):
         print(f"{Fore.RED}登录过程出错: {str(e)}{Style.RESET_ALL}")
         return False
 
-def main(email=None, password=None, first_name=None, last_name=None, email_tab=None, controller=None, translator=None):
+def main(email=None, password=None, first_name=None, last_name=None, email_tab=None, controller=None, translator=None, handle_signals=True):
     """主函数，可以接收账号信息、邮箱标签页和翻译器"""
     global _translator
     _translator = translator  # 保存到全局变量
     
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    if handle_signals:
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
     
     page = None
     success = False
