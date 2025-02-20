@@ -6,6 +6,7 @@ from browser import BrowserManager
 from control import BrowserControl
 from cursor_auth import CursorAuth
 from reset_machine_manual import MachineIDResetter
+import sys
 
 os.environ["PYTHONVERBOSE"] = "0"
 os.environ["PYINSTALLER_VERBOSE"] = "0"
@@ -280,10 +281,15 @@ def main(translator=None):
     print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
 
     registration = CursorRegistration(translator)
-    registration.start()
+    result = registration.start()
 
     print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
-    input(f"{EMOJI['INFO']} {translator.get('register.press_enter')}...")
+    
+    # 当被webui调用时，不需要等待用户按回车
+    if not hasattr(sys, '_MEIPASS'):
+        input(f"{EMOJI['INFO']} {translator.get('register.press_enter')}...")
+        
+    return result
 
 if __name__ == "__main__":
     from main import translator as main_translator

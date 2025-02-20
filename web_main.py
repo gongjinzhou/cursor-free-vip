@@ -9,6 +9,8 @@ import cursor_register
 import cursor_register_manual
 import quit_cursor
 from print_redirect import web_print
+from file_watcher import FileWatcher
+import threading
 
 class Api:
     def __init__(self, translator):
@@ -34,11 +36,19 @@ class Api:
 
     def register(self):
         """注册"""
-        return cursor_register.main(self.translator)
+        try:
+            result = cursor_register.main(self.translator)
+            return {"success": result}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def register_manual(self):
         """手动注册"""
-        return cursor_register_manual.main(self.translator)
+        try:
+            result = cursor_register_manual.main(self.translator)
+            return {"success": result}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def get_print_output(self):
         """获取累积的print输出"""
@@ -98,6 +108,19 @@ def main():
     if hasattr(sys, '_MEIPASS'):
         html_path = os.path.join(sys._MEIPASS, 'web', 'index.html')
 
+    # 设置要监听的目录
+    paths_to_watch = [
+        os.path.dirname(__file__),  # 监听Python文件
+        os.path.join(os.path.dirname(__file__), 'web')  # 监听前端文件
+    ]
+    
+    # 创建文件监听器
+    watcher = FileWatcher(paths_to_watch, lambda: os.execv(sys.executable, [sys.executable] + sys.argv))
+    
+    # 在新线程中启动文件监听
+    watcher_thread = threading.Thread(target=watcher.start, daemon=True)
+    watcher_thread.start()
+
     # 创建窗口
     window = webview.create_window(
         'Cursor VIP Tools',
@@ -107,7 +130,11 @@ def main():
         height=600,
         resizable=True
     )
-    webview.start(debug=True)
+    
+    try:
+        webview.start(debug=True)
+    finally:
+        watcher.stop()  # 确保在程序退出时停止文件监听
 
 if __name__ == '__main__':
     main() 
