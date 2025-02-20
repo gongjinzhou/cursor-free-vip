@@ -1,113 +1,68 @@
 import warnings
 import os
-import platform
 import subprocess
-import time
-import threading
 import shutil
-from logo import print_logo
-from dotenv import load_dotenv
+from pathlib import Path
+import sys
 
 # 忽略特定警告
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 
-class LoadingAnimation:
-    def __init__(self):
-        self.is_running = False
-        self.animation_thread = None
+def clean_build_dirs():
+    """清理构建目录"""
+    dirs_to_clean = ['build', 'dist']
+    for dir_name in dirs_to_clean:
+        if os.path.exists(dir_name):
+            shutil.rmtree(dir_name)
+            print(f"已清理 {dir_name} 目录")
 
-    def start(self, message="Building"):
-        self.is_running = True
-        self.animation_thread = threading.Thread(target=self._animate, args=(message,))
-        self.animation_thread.start()
-
-    def stop(self):
-        self.is_running = False
-        if self.animation_thread:
-            self.animation_thread.join()
-        print("\r" + " " * 70 + "\r", end="", flush=True)
-
-    def _animate(self, message):
-        animation = "|/-\\"
-        idx = 0
-        while self.is_running:
-            print(f"\r{message} {animation[idx % len(animation)]}", end="", flush=True)
-            idx += 1
-            time.sleep(0.1)
-
-def progress_bar(progress, total, prefix="", length=50):
-    filled = int(length * progress // total)
-    bar = "█" * filled + "░" * (length - filled)
-    percent = f"{100 * progress / total:.1f}"
-    print(f"\r{prefix} |{bar}| {percent}% Complete", end="", flush=True)
-    if progress == total:
-        print()
-
-def simulate_progress(message, duration=1.0, steps=20):
-    print(f"\033[94m{message}\033[0m")
-    for i in range(steps + 1):
-        time.sleep(duration / steps)
-        progress_bar(i, steps, prefix="Progress:", length=40)
-
-def build():
-    # 清理屏幕
-    os.system("cls" if platform.system().lower() == "windows" else "clear")
+def build_app():
+    """根据操作系统构建应用"""
+    is_windows = sys.platform.startswith('win')
+    is_mac = sys.platform.startswith('darwin')
     
-    # 顯示 logo
-    print_logo()
+    # 清理旧的构建文件
+    clean_build_dirs()
     
-    # 清理 PyInstaller 緩存
-    print("\033[93m🧹 清理構建緩存...\033[0m")
-    if os.path.exists('build'):
-        shutil.rmtree('build')
+    if is_windows:
+        spec_file = 'build_windows.spec'
+        print("正在为Windows构建...")
+    elif is_mac:
+        spec_file = 'build_mac.spec'
+        print("正在为macOS构建...")
+    else:
+        print("不支持的操作系统")
+        return False
     
-    # 重新加載環境變量以確保獲取最新版本
-    load_dotenv(override=True)
-    version = os.getenv('VERSION', '1.0.0')
-    print(f"\033[93m📦 正在構建版本: v{version}\033[0m")
-
     try:
-        simulate_progress("Preparing build environment...", 0.5)
+        # 运行PyInstaller
+        subprocess.run(['pyinstaller', spec_file], check=True)
         
-        loading = LoadingAnimation()
-        loading.start("Building in progress")
+        # 构建成功
+        dist_dir = Path('dist')
+        if is_windows:
+            exe_path = dist_dir / 'CursorVIP.exe'
+            if exe_path.exists():
+                print(f"\n构建成功！可执行文件位置：{exe_path}")
+                return True
+        elif is_mac:
+            app_path = dist_dir / 'CursorVIP.app'
+            if app_path.exists():
+                print(f"\n构建成功！应用程序位置：{app_path}")
+                return True
         
-        # 根据系统类型设置输出名称
-        system = platform.system().lower()
-        if system == "windows":
-            os_type = "windows"
-            ext = ".exe"
-        elif system == "linux":
-            os_type = "linux"
-            ext = ""
-        else:  # Darwin
-            os_type = "mac"
-            ext = ""
-            
-        output_name = f"CursorFreeVIP_{version}_{os_type}"
+        print("\n构建似乎成功了，但找不到输出文件")
+        return False
         
-        # 构建命令
-        build_command = f'pyinstaller --clean --noconfirm build.spec'
-        output_path = os.path.join('dist', f'{output_name}{ext}')
-        
-        os.system(build_command)
-        
-        loading.stop()
-
-        if os.path.exists(output_path):
-            print(f"\n\033[92m✅ 構建完成！")
-            print(f"📦 可執行文件位於: {output_path}\033[0m")
-        else:
-            print("\n\033[91m❌ 構建失敗：未找到輸出文件\033[0m")
-            return False
-
+    except subprocess.CalledProcessError as e:
+        print(f"\n构建失败：{e}")
+        return False
     except Exception as e:
-        if loading:
-            loading.stop()
-        print(f"\n\033[91m❌ 構建過程出錯: {str(e)}\033[0m")
+        print(f"\n发生未知错误：{e}")
         return False
 
-    return True
-
-if __name__ == "__main__":
-    build() 
+if __name__ == '__main__':
+    if build_app():
+        print("\n✨ 构建完成！")
+    else:
+        print("\n❌ 构建失败") 

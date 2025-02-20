@@ -2,7 +2,6 @@ import webview
 import os
 import sys
 import json
-from logo import print_logo
 from colorama import Fore, Style, init
 import reset_machine_manual
 import cursor_register
