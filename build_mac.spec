@@ -1,67 +1,53 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
-
 a = Analysis(
-    ['web_main.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[
-        ('web', 'web'),
+        ('turnstilePatch', 'turnstilePatch'),
+        ('PBlock', 'PBlock'),
         ('locales', 'locales'),
+        ('cursor_auth.py', '.'),
+        ('reset_machine_manual.py', '.'),
+        ('cursor_register.py', '.'),
+        ('browser.py', '.'),
+        ('control.py', '.'),
+        ('.env', '.')
     ],
     hiddenimports=[
-        'webview',
-        'watchdog',
-        'colorama',
-        'requests',
-        'psutil',
-        'DrissionPage',
+        'cursor_auth',
+        'reset_machine_manual',
+        'browser',
+        'control'
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['logo'],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
+    excludes=[],
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
-    name='CursorVIP',
+    name='CursorFreeVIP_1.0.0_mac_universal2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
     disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
+    argv_emulation=true,
+    target_arch='universal2',
     codesign_identity=None,
     entitlements_file=None,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='CursorVIP',
-)
-
-app = BUNDLE(
-    coll,
-    name='CursorVIP.app',
-    icon=None,
-    bundle_identifier=None,
+    icon='images/logo.ico' if os.path.exists('images/logo.ico') else None
 )

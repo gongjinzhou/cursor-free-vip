@@ -1,34 +1,38 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
+import os
+
 block_cipher = None
+
+# 获取当前目录
+current_dir = os.path.dirname(os.path.abspath(SPEC))
+
+# 定义需要包含的数据文件
+datas = [
+    ('web', 'web'),
+    ('locales', 'locales'),
+]
 
 a = Analysis(
     ['web_main.py'],
-    pathex=[],
+    pathex=[current_dir],
     binaries=[],
-    datas=[
-        ('web', 'web'),
-        ('locales', 'locales'),
-        ('reset_machine_manual.py', '.'),
-        ('cursor_register.py', '.'),
-        ('cursor_register_manual.py', '.'),
-        ('quit_cursor.py', '.'),
-    ],
+    datas=datas,
     hiddenimports=[
         'webview',
         'watchdog',
         'colorama',
         'requests',
         'psutil',
-        'win32api',
-        'win32con',
-        'win32gui',
         'DrissionPage',
+        'threading',
+        'json',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['logo'],
+    excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -51,7 +55,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
