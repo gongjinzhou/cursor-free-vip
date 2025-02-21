@@ -121,6 +121,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='images/logo.ico' if os.path.exists('images/logo.ico') else None,
+    uac_admin=False
 )'''
 
     spec_file = 'build_mac.spec' if is_mac else 'build_windows.spec'

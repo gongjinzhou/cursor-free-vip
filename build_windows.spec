@@ -61,4 +61,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='images/logo.ico' if os.path.exists('images/logo.ico') else None,
+    uac_admin=False
 )

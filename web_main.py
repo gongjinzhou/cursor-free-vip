@@ -10,6 +10,16 @@ import quit_cursor
 from print_redirect import web_print
 from file_watcher import FileWatcher
 import threading
+import ctypes
+
+# 隐藏控制台窗口并不在任务栏中显示
+if hasattr(sys, '_MEIPASS'):
+    try:
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        ctypes.windll.user32.ShowWindow(hwnd, 0)  # 隐藏窗口
+        ctypes.windll.user32.SetWindowLong(hwnd, -16, 0x80000000)  # 不在任务栏中显示
+    except:
+        pass
 
 class Api:
     def __init__(self, translator):
@@ -127,11 +137,17 @@ def main():
         js_api=api,
         width=800,
         height=600,
-        resizable=True
+        resizable=True,
+        frameless=False,
+        easy_drag=True,
+        text_select=False,
+        on_top=False,
+        confirm_close=True,
+        background_color='#FFFFFF'
     )
     
     try:
-        webview.start(debug=True)
+        webview.start(debug=False)
     finally:
         watcher.stop()  # 确保在程序退出时停止文件监听
 
